@@ -1,5 +1,5 @@
 
-SOURCES:=usbjtag.c eeprom.c hw_basic.c 
+SOURCES:=main.c
 A51_SOURCES:=vectors.a51 dscr.a51 startup.a51 # vectors.a51 must ALWAYS go first! (TODO: check why)
 EXTRA_CFLAGS:=-Ifx2
 LIBS:=fx2/fx2.lib
