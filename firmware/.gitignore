@@ -1,0 +1,11 @@
+*.rel
+*.lst
+*.mem
+*.map
+*.asm
+*.sym
+*.rst
+*.iic
+*.lk
+*.lib
+*.geany
