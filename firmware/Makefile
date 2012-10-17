@@ -7,7 +7,9 @@ EXTRA_LDFLAGS:=-L fx2 -I fx2
 
 include fx2/fx2.mk
 
-all: fx2/fx2.lib exacam.iic
+all: build
+
+build: fx2/fx2.lib exacam.iic
 
 fx2/fx2.lib:
 	$(MAKE) -C fx2 fx2.lib
@@ -15,3 +17,9 @@ fx2/fx2.lib:
 clean:
 	$(MAKE) -C fx2 clean
 	rm -f $(JUNK_FILES)
+	
+load: build
+	sudo fx2load -v 0x04b4 -p 0x8613 exacam.iic
+
+info:
+	lsusb -d fffe:0100 -v 
