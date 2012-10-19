@@ -4,6 +4,11 @@ A51_SOURCES:=vectors.a51 dscr.a51 startup.a51 # vectors.a51 must ALWAYS go first
 EXTRA_CFLAGS:=-Ifx2
 LIBS:=fx2/fx2.lib
 EXTRA_LDFLAGS:=-L fx2 -I fx2
+#EXTRA_CFLAGS:=
+
+ifneq ($(RELEASE),1)
+  EXTRA_CFLAGS += -DFIRMWARE_GIT_REVISION=\"$(shell git rev-parse HEAD)\"
+endif
 
 include fx2/fx2.mk
 

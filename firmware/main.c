@@ -29,6 +29,8 @@
 #include <usb_requests.h>
 #include <syncdelay.h>
 
+#include "config.h"
+
 /* declarations */
 void firmware_initialize(void);
 
@@ -103,43 +105,37 @@ void firmware_initialize(void)
 
 unsigned char app_vendor_cmd(void)
 {
-  #if 0
   // OUT requests. Pretend we handle them all...
+  // TODO: what is this?
   if ((bRequestType & bmRT_DIR_MASK) == bmRT_DIR_OUT){
-      if(bRequest == RQ_GET_STATUS){
-          Running = 1;
-      };
-      return 1;
+    return 1;
   }
 
   // IN requests.    
   switch (bRequest){
-    /*case 0x94: // get Firmware version
+    // get firmware version / git revision
+    case 0x94: 
+    case 0x95:
     {
-      int i=0;
-      char* ver=FWVERSION;
-      while(ver[i]!='\0'){
-        EP0BUF[i]=ver[i];
+      int i = 0;
+      const char* ver = (bRequest == 0x94 ? FIRMWARE_VERSION : FIRMWARE_GIT_REVISION);
+      while (ver[i] != '\0') {
+        EP0BUF[i] = ver[i];
         i++;
       }
       EP0BCH = 0; // Arm endpoint
       EP0BCL = i; 
-      
     }
-    break;*/
+    break;
     default:
-      return 1; // TODO: this should stall, but it seems I have to unstall later
-    /*{
       // dummy data
       EP0BUF[0] = 0x36;
       EP0BUF[1] = 0x83;
       EP0BCH = 0;
       EP0BCL = (wLengthL<2) ? wLengthL : 2;
-    }*/
     break;
   }
 
-  #endif
   return 1;
 }
 
