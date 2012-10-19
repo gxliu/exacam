@@ -84,7 +84,7 @@ EXTERN __xdata _AT_(0xE605) volatile BYTE BREAKPT           ;  // Breakpoint
 EXTERN __xdata _AT_(0xE606) volatile BYTE BPADDRH           ;  // Breakpoint Address H
 EXTERN __xdata _AT_(0xE607) volatile BYTE BPADDRL           ;  // Breakpoint Address L
 EXTERN __xdata _AT_(0xE608) volatile BYTE UART230           ;  // 230 Kbaud clock for T0,T1,T2
-EXTERN __xdata _AT_(0xE609) volatile BYTE FIFOPINPOLAR      ;  // FIFO polarities
+EXTERN __xdata _AT_(0xE609) volatile BYTE FIFOINPOLAR       ;  // FIFO polarities
 EXTERN __xdata _AT_(0xE60A) volatile BYTE REVID             ;  // Chip Revision
 EXTERN __xdata _AT_(0xE60B) volatile BYTE REVCTL            ;  // Chip Revision Control
 
