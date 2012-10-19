@@ -58,10 +58,25 @@ void main(void)
 
 void firmware_initialize(void)
 {
+  /* configure system */
+  CPUCS |= bmCLKSPD0; // set 24MHz clock + output clock. TODO: set at 48Mhz when I resolve pre-scaling on the camera
+  
   /* configure fifos */
-
+  IFCONFIG &= ~bmIFCLKSRC; SYNCDELAY; // disable int. FIFO clock (use ext. clock)
+  IFCONFIG |= (bmIFCFG0 | bmIFCFG1); SYNCDELAY;// enable SLAVE FIFO operation
+  
   // enable FIFO configuration
   REVCTL = 3; SYNCDELAY;
+  
+  // disable unused endpoints
+  EP1OUTCFG &= ~bmVALID; SYNCDELAY;
+  EP1INCFG  &= ~bmVALID; SYNCDELAY;
+  EP2CFG &= ~bmVALID; SYNCDELAY;
+  EP4CFG &= ~bmVALID; SYNCDELAY;
+  EP8CFG &= ~bmVALID; SYNCDELAY;
+  
+  // enable EP6
+  EP6CFG = bmVALID | bmISOCHRONOUS | bmIN | bmQUADBUF; SYNCDELAY;
 
   // reset all fifos
   FIFORESET = 0x80; SYNCDELAY;						// From now on, NAK all, reset all FIFOS
@@ -71,45 +86,19 @@ void firmware_initialize(void)
   FIFORESET  = 0x08; SYNCDELAY;					// Reset FIFO 8
   FIFORESET  = 0x00; SYNCDELAY;					// Restore normal behaviour
   
-  // disable unused endpoints
-  EP1OUTCFG &= ~bmVALID; SYNCDELAY;
-  EP1INCFG  &= ~bmVALID; SYNCDELAY;
-  EP2CFG &= ~bmVALID; SYNCDELAY;
-  EP4CFG &= ~bmVALID; SYNCDELAY;
-  EP8CFG &= ~bmVALID; SYNCDELAY;
   
-  EP6CFG = bmVALID | bmISOCHRONOUS | bmIN | bmQUADBUF;
+  // setup EP6
+  EP6FIFOCFG &= ~bmWORDWIDE; SYNCDELAY; // set EP6 8bits (PORTB -> FD[7:0]) 
+  EP6AUTOINLENH = 0x4; SYNCDELAY; // high-order bits set to "100" => auto-len = 1024
+  EP6FIFOCFG |= bmAUTOIN; SYNCDELAY; // set EP6 auto-in (auto-commits data from camera to usb)
+  FIFOINPOLAR |= bmBIT2; SYNCDELAY; // set SLWR active-high
   
-  /*
-  EP2FIFOCFG = 0x00; SYNCDELAY;					// Endpoint 2
-  EP2CFG     = 0xA2; SYNCDELAY;					// Endpoint 2 Valid, Out, Type Bulk, Double buffered
-
-  EP4FIFOCFG = 0x00; SYNCDELAY;					// Endpoint 4 not used
-  EP4CFG     = 0xA0; SYNCDELAY;					// Endpoint 4 not used
-
-  // disable FIFO access/configuration, enable auto-arming when AUTOOUT is switched to 1
+  // disable access to FIFOs
   REVCTL = 0; SYNCDELAY;
-
-  EP6CFG     = 0xA2; SYNCDELAY;					// Out endpoint, Bulk, Double buffering
-  EP6FIFOCFG = 0x00; SYNCDELAY;					// Firmware has to see a rising edge on auto bit to enable auto arming
-  EP6FIFOCFG = bmAUTOOUT | bmWORDWIDE; SYNCDELAY;	// Endpoint 6 used for user communicationn, auto commitment, 16 bits data bus
-
-  EP8CFG     = 0xE0; SYNCDELAY;					// In endpoint, Bulk
-  EP8FIFOCFG = 0x00; SYNCDELAY;					// Firmware has to see a rising edge on auto bit to enable auto arming
-  EP8FIFOCFG = bmAUTOIN  | bmWORDWIDE; SYNCDELAY;	// Endpoint 8 used for user communication, auto commitment, 16 bits data bus
-
-  EP8AUTOINLENH = 0x00; SYNCDELAY;					// Size in bytes of the IN data automatically commited (64 bytes here, but changed dynamically depending on the connection)
-  EP8AUTOINLENL = 0x40; SYNCDELAY;					// Can use signal PKTEND if you want to commit a shorter packet
-
-  // Out endpoints do not come up armed
-  // Since the defaults are double buffered we must write dummy byte counts twice
-  EP2BCL = 0x80; SYNCDELAY;						// Arm EP2OUT by writing byte count w/skip.=
-  EP4BCL = 0x80; SYNCDELAY;
-  EP2BCL = 0x80; SYNCDELAY;						// Arm EP4OUT by writing byte count w/skip.= 
-  EP4BCL = 0x80; SYNCDELAY;
-  */
-  // Put the FIFO in sync mode
-  //IFCONFIG &= ~bmASYNC;
+  
+  // TODO: ver como setear las cosas para que se empiece a hacer todo recien al inicio de un frame (falling edge de VSYNC, por ej)
+  // TODO: set FIFOADDR pins!
+  // TODO: PKTEND to send a line directly?  
 }
 
 unsigned char app_vendor_cmd(void)
