@@ -31,17 +31,31 @@
 
 #include "config.h"
 
+/* this interrupt turns the FIFOs on when the VSYNC is low (frame starts) */
+/* TODO: this is not enough, the fifos need to be started only when a sync frame is received */
+static void isr_ex0 (void) interrupt
+{
+  IFCONFIG |= (bmIFCFG0 | bmIFCFG1); // enable FIFOs
+  EX0 = 0; // disable INT0 interrupt
+  IE0 = 0; // clear flag
+}
+
 /* declarations */
 void firmware_initialize(void);
 
 void main(void)
 {
+  hook_sv(SV_INT_0,(unsigned short) isr_ex0);
+  
   /* initialize */
   EA = 0; // disable all interrupts
   firmware_initialize();
   setup_autovectors ();
   usb_install_handlers ();
   EA = 1; // enable interrupts
+  
+  IT0 = 0; // INT0 on low-level (vs low-edge)
+  EX0 = 1; // enable INT0 interrupt
 
   /* renumerate */
   fx2_renumerate();
@@ -65,7 +79,7 @@ void firmware_initialize(void)
   
   /* configure fifos */
   IFCONFIG &= ~bmIFCLKSRC; SYNCDELAY; // disable int. FIFO clock (use ext. clock)
-  IFCONFIG |= (bmIFCFG0 | bmIFCFG1); SYNCDELAY;// enable SLAVE FIFO operation
+  //IFCONFIG |= (bmIFCFG0 | bmIFCFG1); SYNCDELAY;// enable SLAVE FIFO operation
   
   // enable FIFO configuration
   REVCTL = 3; SYNCDELAY;
@@ -87,7 +101,6 @@ void firmware_initialize(void)
   FIFORESET  = 0x06; SYNCDELAY;					// Reset FIFO 6
   FIFORESET  = 0x08; SYNCDELAY;					// Reset FIFO 8
   FIFORESET  = 0x00; SYNCDELAY;					// Restore normal behaviour
-  
   
   // setup EP6
   EP6FIFOCFG &= ~bmWORDWIDE; SYNCDELAY; // set EP6 8bits (PORTB -> FD[7:0]) 
