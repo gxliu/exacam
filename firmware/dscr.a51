@@ -135,10 +135,10 @@ _dscr_attrpow::
 
         .db        DSCR_ENDPNT_LEN
         .db        DSCR_ENDPNT
-        .db        0x86             ; bEndpointAddress (ep 6 IN)
+        .db        0x82             ; bEndpointAddress (ep 2 IN)
         .db        ET_ISO           ; bmAttributes. TODO: synchronization?
-        .db        <1024            ; wMaxPacketSize (LSB)
-        .db        >1024            ; wMaxPacketSize (MSB)
+        .db        <5120            ; wMaxPacketSize (LSB) -> 3x1024 (max within microframe)
+        .db        >5120            ; wMaxPacketSize (MSB)
         .db        1                ; bInterval (iso only) 
         
 _high_speed_config_descr_end:                   

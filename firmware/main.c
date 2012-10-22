@@ -35,7 +35,17 @@
 /* TODO: this is not enough, the fifos need to be started only when a sync frame is received */
 static void isr_ex0 (void) interrupt
 {
-  IFCONFIG |= (bmIFCFG0 | bmIFCFG1); // enable FIFOs
+  FIFORESET = 0x80; // activate NAK-ALL to avoid race conditions
+  SYNCDELAY;
+  EP6FIFOCFG = 0x00; //switching to manual mode
+  SYNCDELAY;
+  FIFORESET = 0x02; // Reset FIFO 2
+  SYNCDELAY;
+  EP6FIFOCFG = 0x0C; //switching to auto mode
+  SYNCDELAY;
+  FIFORESET = 0x00; //Release NAKALL
+  SYNCDELAY;
+
   EX0 = 0; // disable INT0 interrupt
   IE0 = 0; // clear flag
 }
@@ -55,7 +65,6 @@ void main(void)
   EA = 1; // enable interrupts
   
   IT0 = 0; // INT0 on low-level (vs low-edge)
-  EX0 = 1; // enable INT0 interrupt
 
   /* renumerate */
   fx2_renumerate();
@@ -78,8 +87,9 @@ void firmware_initialize(void)
   CPUCS |= bmCLKSPD0; // set 24MHz clock + output clock. TODO: set at 48Mhz when I resolve pre-scaling on the camera
   
   /* configure fifos */
+  //IFCONFIG |= bmIFCLKPOL; // invert FIFO clock polarity, TODO: ok?
   IFCONFIG &= ~bmIFCLKSRC; SYNCDELAY; // disable int. FIFO clock (use ext. clock)
-  //IFCONFIG |= (bmIFCFG0 | bmIFCFG1); SYNCDELAY;// enable SLAVE FIFO operation
+  IFCONFIG |= (bmIFCFG0 | bmIFCFG1); SYNCDELAY;// enable SLAVE FIFO operation
   
   // enable FIFO configuration
   REVCTL = 3; SYNCDELAY;
@@ -87,12 +97,12 @@ void firmware_initialize(void)
   // disable unused endpoints
   EP1OUTCFG &= ~bmVALID; SYNCDELAY;
   EP1INCFG  &= ~bmVALID; SYNCDELAY;
-  EP2CFG &= ~bmVALID; SYNCDELAY;
+  EP6CFG &= ~bmVALID; SYNCDELAY;
   EP4CFG &= ~bmVALID; SYNCDELAY;
   EP8CFG &= ~bmVALID; SYNCDELAY;
   
   // enable EP6
-  EP6CFG = bmVALID | bmISOCHRONOUS | bmIN | bmQUADBUF; SYNCDELAY;
+  EP2CFG = bmVALID | bmISOCHRONOUS | bmIN | bmQUADBUF; SYNCDELAY;
 
   // reset all fifos
   FIFORESET = 0x80; SYNCDELAY;						// From now on, NAK all, reset all FIFOS
@@ -102,10 +112,11 @@ void firmware_initialize(void)
   FIFORESET  = 0x08; SYNCDELAY;					// Reset FIFO 8
   FIFORESET  = 0x00; SYNCDELAY;					// Restore normal behaviour
   
-  // setup EP6
-  EP6FIFOCFG &= ~bmWORDWIDE; SYNCDELAY; // set EP6 8bits (PORTB -> FD[7:0]) 
-  EP6AUTOINLENH = 0x4; SYNCDELAY; // high-order bits set to "100" => auto-len = 1024
-  EP6FIFOCFG |= bmAUTOIN; SYNCDELAY; // set EP6 auto-in (auto-commits data from camera to usb)
+  // setup EP2
+  EP2FIFOCFG &= ~bmWORDWIDE; SYNCDELAY; // set EP2 8bits (PORTB -> FD[7:0]) 
+  EP2AUTOINLENH = 0x4; SYNCDELAY; // high-order bits set to "100" => auto-len = 1024
+  EP2AUTOINLENL = 0; SYNCDELAY; // high-order bits set to "100" => auto-len = 1024
+  EP2FIFOCFG |= bmAUTOIN; SYNCDELAY; // set EP6 auto-in (auto-commits data from camera to usb)
   FIFOINPOLAR |= bmBIT2; SYNCDELAY; // set SLWR active-high
   
   // disable access to FIFOs
@@ -137,7 +148,9 @@ unsigned char app_vendor_cmd(void)
         i++;
       }
       EP0BCH = 0; // Arm endpoint
-      EP0BCL = i; 
+      EP0BCL = i;
+      
+      if (bRequest == 0x95) EX0 = 1; // enable INT0 interrupt
     }
     break;
     default:
