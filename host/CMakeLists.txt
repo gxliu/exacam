@@ -13,7 +13,12 @@ pkg_search_module(LIBUSB REQUIRED libusb-1.0)
 include_directories(${LIBUSB_INCLUDE_DIRS})
 
 file(GLOB EXACAM_SRC *.cpp)
-SET(SOURCES ${SOURCES} ${EXACAM_SRC})
-add_executable(exacam ${SOURCES})
+#SET(SOURCES ${SOURCES} ${EXACAM_SRC})
+#add_executable(exacam ${SOURCES})
+
+add_executable(exacam main.cpp)
 target_link_libraries(exacam ${LIBUSB_LIBRARIES})
+
+add_executable(post post.cpp)
+
 
