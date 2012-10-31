@@ -15,10 +15,13 @@ int main(void) {
   in.read(in_data, size);
   char* out_data = new char[size * 3];
   for (int i = 0; i < size; i++) {
-    char y = (in_data[i] >> 4) * 16;
+    /*char y = (in_data[i] >> 4) * 16;
     out_data[i * 3 + 0] = y;
     out_data[i * 3 + 1] = y;
-    out_data[i * 3 + 2] = y;    
+    out_data[i * 3 + 2] = y;    */
+    /*out_data[i * 3 + 0] = (in_data[i] & 0x0C) >> 2;
+    out_data[i * 3 + 1] = in_data[i] & 0x03;
+    out_data[i * 3 + 2] = (in_data[i] & 0xF0) >> 4;*/
   }
   
   ofstream out("output2.data");

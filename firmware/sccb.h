@@ -11,6 +11,12 @@ void sccb_modify(char addr, char set, char unset);
 #define SCCB_COM3 0x0C
 #define SCCB_COM7 0x12
 #define SCCB_CLKRC 0x11
+#define SCCB_COM14 0x3E
+#define SCCB_COM15 0x40
+#define SCCB_COM17 0x42
+#define SCCB_SCALING_XSC 0x70
+#define SCCB_SCALING_YSC 0x71
+#define SCCB_SCALING_PCLK_DIV 0x73
 
 /* bits */
 
@@ -18,11 +24,26 @@ void sccb_modify(char addr, char set, char unset);
 #define bmSCALE_ENABLE bmBIT3
 
 // COM7
+#define bmCIF  bmBIT5
 #define bmQVGA bmBIT4
+#define bmQCIF bmBIT3
+
 #define bmRGB bmBIT2
 #define bmCOLORBAR bmBIT1
 
 // CLKRC
 #define bmNO_PRESCALE bmBIT6
+
+// SCALING_XSC/YSC
+#define bmTEST_PATTERN bmBIT7
+
+// COM14
+#define bmDCWSCALE bmBIT4
+
+// SCALING_PCLK_DIV
+#define bmDSPSCALE bmBIT3
+
+// COM17
+#define bmDSPCOLORBAR bmBIT3
 
 #endif

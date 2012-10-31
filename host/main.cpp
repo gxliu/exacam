@@ -9,9 +9,12 @@ using namespace std;
 
 bool should_stop = false;
 long received = 0;
+bool in_frame = 0;
 std::ofstream file;
 
 void transfer_ended(struct libusb_transfer *transfer) {
+  libusb_submit_transfer(transfer);
+    
   if (transfer->status == LIBUSB_TRANSFER_COMPLETED) {
     int num_packets = transfer->num_iso_packets;
     //cout << "packets: " << num_packets << endl;
@@ -21,12 +24,17 @@ void transfer_ended(struct libusb_transfer *transfer) {
       libusb_iso_packet_descriptor* pack = &transfer->iso_packet_desc[i];
       if (pack->status == LIBUSB_TRANSFER_COMPLETED) {
         cout << "length: " << pack->actual_length << endl;
+        if (pack->actual_length == 4) {
+          if (in_frame) { in_frame = false; should_stop = true; }
+          else in_frame = true;
+          cout << "control!" << endl; continue;
+        }
         
         //cout << "received: " << transfer->length << " bytes" << endl;
         if (pack->actual_length != 0) {
           received += pack->actual_length;
           const unsigned char* buf = libusb_get_iso_packet_buffer_simple(transfer, i);
-          file.write((const char*)buf, pack->actual_length); // TODO: default data seems to be YUYV
+          file.write((const char*)buf, pack->actual_length); 
         }
         completed++;
       }
@@ -35,12 +43,9 @@ void transfer_ended(struct libusb_transfer *transfer) {
       else if (pack->status == LIBUSB_TRANSFER_TIMED_OUT) cout << "timeout " << endl;
       else if (pack->status == LIBUSB_TRANSFER_ERROR) cout << "fail" << endl;
     }
-    if (completed == 0) cout << "no transfers completed" << endl;
-    else cout << "completed " << completed << endl;
+    cout << "completed " << completed << "/" << num_packets << endl;
   }
   else cout << "error" << endl;
-  
-  libusb_submit_transfer(transfer);
 }
 
 class Request {
@@ -63,6 +68,7 @@ class Request {
     void deinit(void) {
       libusb_cancel_transfer(transfer);
       libusb_free_transfer(transfer);
+      transfer = NULL;
     }
         
     vector<unsigned char> data;
@@ -88,10 +94,9 @@ int main(void) {
   libusb_init(NULL);
   libusb_set_debug(NULL, 3);
   
-  size_t packet_length = 1024;
-  int packets = 160;
-  int buf_multiplier = 5;
-  int request_num = 5;
+  int packets = 200;
+  int buf_multiplier = 20;
+  int request_num = 4;
   
   libusb_device_handle* dev_handle = NULL;
   vector<Request> requests;
@@ -115,6 +120,8 @@ int main(void) {
     if (ret == LIBUSB_ERROR_TIMEOUT) { cout << "transfer timed out" << endl; }
     else { cout << "received " << ret << " bytes: "; data[ret] = '\0'; cout << (const char*)&data[0] << endl; }
     
+    size_t packet_length = libusb_get_max_iso_packet_size(libusb_get_device(dev_handle), 0x82);
+    cout << "packet length: " << packet_length << endl;
     requests.resize(request_num, Request(dev_handle, packet_length, packets, buf_multiplier));
     for (int i = 0; i < request_num; i++) requests[i].init();
     
