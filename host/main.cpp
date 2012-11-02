@@ -13,7 +13,6 @@ bool in_frame = 0;
 std::ofstream file;
 
 void transfer_ended(struct libusb_transfer *transfer) {
-  libusb_submit_transfer(transfer);
     
   if (transfer->status == LIBUSB_TRANSFER_COMPLETED) {
     int num_packets = transfer->num_iso_packets;
@@ -34,18 +33,21 @@ void transfer_ended(struct libusb_transfer *transfer) {
         if (pack->actual_length != 0) {
           received += pack->actual_length;
           const unsigned char* buf = libusb_get_iso_packet_buffer_simple(transfer, i);
-          file.write((const char*)buf, pack->actual_length); 
+          long l = pack->actual_length;
+          file.write((const char*)buf, l); 
         }
         completed++;
       }
-      else if (pack->status == LIBUSB_TRANSFER_OVERFLOW) cout << "overflow" << endl;
+      /*else if (pack->status == LIBUSB_TRANSFER_OVERFLOW) cout << "overflow" << endl;
       else if (pack->status == LIBUSB_TRANSFER_STALL) cout << "stall" << endl;
       else if (pack->status == LIBUSB_TRANSFER_TIMED_OUT) cout << "timeout " << endl;
-      else if (pack->status == LIBUSB_TRANSFER_ERROR) cout << "fail" << endl;
+      else if (pack->status == LIBUSB_TRANSFER_ERROR) cout << "fail" << endl;*/
     }
     cout << "completed " << completed << "/" << num_packets << endl;
   }
   else cout << "error" << endl;
+  
+  libusb_submit_transfer(transfer);
 }
 
 class Request {
@@ -61,7 +63,7 @@ class Request {
     
     void init(void)  {
       transfer = libusb_alloc_transfer(packets);
-      libusb_fill_iso_transfer(transfer, dev_handle, 0x82, &data[0], buf_size, packets, transfer_ended, NULL, 100);
+      libusb_fill_iso_transfer(transfer, dev_handle, 0x82, &data[0], buf_size, packets, transfer_ended, NULL, 500);
       libusb_set_iso_packet_lengths(transfer, packet_length);    
     }    
     
@@ -88,7 +90,7 @@ int main(void) {
   signal(SIGINT, interrupt);
   signal(SIGTERM, interrupt);
   
-  file.open("output.data");
+  file.open("output.data", ios_base::out | ios_base::binary);
   
   /* initialize */
   libusb_init(NULL);
@@ -139,6 +141,7 @@ int main(void) {
       
       libusb_handle_events(NULL);
     }
+    file.flush();
   }
   catch(const std::runtime_error& e) {
     cout << "ERROR: " << e.what() << endl;
@@ -153,5 +156,6 @@ int main(void) {
     libusb_close(dev_handle);
   }
   libusb_exit(NULL);
+  
   return 0;
 }

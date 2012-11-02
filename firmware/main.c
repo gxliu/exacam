@@ -36,19 +36,13 @@ char capturing = 0;
 char start = 0;
 char stop = 0;
 
-/* this interrupt turns the FIFOs on when the VSYNC is low (frame starts) */
-/* TODO: this is not enough, the fifos need to be started only when a sync frame is received */
 static void isr_ex0 (void) interrupt
 {
-  if (capturing == 0) {
-    start = 1;
-  }
-  else {
-    stop = 1;
-    EX0 = 0; SYNCDELAY; // disable INT0 interrupt    
-  }
+  FIFORESET = 0x02; SYNCDELAY;					// Reset FIFO 2
+  FIFORESET = 0x0; SYNCDELAY;
+  IOA3 ^= 1; //SYNCDELAY;
   
-  IE0 = 0; // clear flag
+  IE0 = 0; SYNCDELAY;// clear flag
 }
 
 /* declarations */
@@ -57,16 +51,16 @@ void firmware_initialize(void);
 void main(void)
 {
   IT0 = 1; // INT0 on low-edge
-  EX0 = 0; // disable INT0 interrupt
-  IE0 = 0; // clear INT0 flag      
+  EX0 = 0; SYNCDELAY; // disable INT0 interrupt
+  IE0 = 0; SYNCDELAY; // clear INT0 flag      
   hook_sv(SV_INT_0,(unsigned short) isr_ex0);
   
   /* initialize */
-  EA = 0; // disable all interrupts
+  EA = 0; SYNCDELAY; // disable all interrupts
   firmware_initialize();
   setup_autovectors ();
   usb_install_handlers ();
-  EA = 1; // enable interrupts
+  EA = 1; SYNCDELAY; // enable interrupts
   
   
   /* renumerate */
@@ -81,29 +75,24 @@ void main(void)
       
     // insert main function here
     if (start == 1) {
-      start = 0;
-      //IOA |= bmBIT1; mdelay(1); // camera reset high (put camera out of reset)
-      FIFORESET = 0x80; SYNCDELAY; // activate NAK-ALL to avoid race conditions
-      FIFORESET = 0x02; SYNCDELAY; // Reset FIFO 2
-      FIFORESET = 0x00; SYNCDELAY; //Release NAKALL
-      EP2FIFOCFG &= ~bmWORDWIDE; SYNCDELAY;
-      
-      EP2FIFOBUF[0] = 0xF0; SYNCDELAY;
-      EP2FIFOBUF[1] = 0xF0; SYNCDELAY;
-      EP2FIFOBUF[2] = 0x0F; SYNCDELAY;
-      EP2FIFOBUF[3] = 0x0F; SYNCDELAY;
-      EP2BCH = 0; SYNCDELAY;
-      EP2BCL = 4; SYNCDELAY;
-      
-      EP2FIFOCFG |= bmAUTOIN; SYNCDELAY; //switching to auto-in mode
+      start = 0;      
       capturing = 1;
+      //mdelay(15);
+      //EX0 = 1; SYNCDELAY;
     }
     else if (stop == 1) {
-      stop = 0;
+      EX0 = 0; SYNCDELAY; // disable INT0 interrupt    
+      
+      IOA |= bmBIT3; SYNCDELAY;// enable SLCS, ignore camera
+      
       //IOA &= ~bmBIT1; mdelay(1); // camera reset high (put camera out of reset)
-      while(!(EP2FIFOFLGS & 0x20));
+      //EP2FIFOCFG &= ~bmAUTOIN; SYNCDELAY; //switching to auto-in mode
+      
+      //while(!(EP2FIFOFLGS & 0x20));
+      
+      FIFORESET = 0x80; SYNCDELAY;					// Restore normal behaviour
 
-      FIFORESET = 0x80; SYNCDELAY; // activate NAK-ALL to avoid race conditions
+      /*FIFORESET = 0x80; SYNCDELAY; // activate NAK-ALL to avoid race conditions
       FIFORESET = 0x02; SYNCDELAY; // Reset FIFO 2
       EP2FIFOCFG &= ~bmAUTOIN; SYNCDELAY; //switching to auto-in mode
       FIFORESET = 0x00; SYNCDELAY; //Release NAKALL
@@ -115,33 +104,29 @@ void main(void)
       EP2BCH = 0; SYNCDELAY;
       EP2BCL = 4; SYNCDELAY;
       
-      //EP2FIFOCFG |= bmAUTOIN; SYNCDELAY; //switching to auto-in mode
+      EP2FIFOCFG |= bmAUTOIN; SYNCDELAY; //switching to auto-in mode*/
       capturing = 0;
-
+      stop = 0;      
     }
   }
 }
 
+#define VSTART 12
+#define VSTOP 492
+#define HSTART 168
+#define HSTOP 24
+
 
 void firmware_initialize(void)
 {
-  // reset all fifos (so we start clean before turning the camera on)
-  FIFORESET = 0x80; SYNCDELAY;					// From now on, NAK all, reset all FIFOS
-  FIFORESET = 0x02; SYNCDELAY;					// Reset FIFO 2
-  FIFORESET = 0x04; SYNCDELAY;					// Reset FIFO 4
-  FIFORESET = 0x06; SYNCDELAY;					// Reset FIFO 6
-  FIFORESET = 0x08; SYNCDELAY;					// Reset FIFO 8
-  FIFORESET = 0x00; SYNCDELAY;					// Restore normal behaviour
-  
   /* configure system */
-  CPUCS |= bmCLKSPD0 /*| bmCLKINV*/; // set 24MHz clock + output clock (todo: test 48MHz)
+  CPUCS |= bmCLKSPD1 /*| bmCLKINV*/; SYNCDELAY; // set 24MHz clock + output clock (todo: test 48MHz)
   
   /* configure camera (needs to be done here so that the IFCLK is active before configuring FIFOs) */
-  PORTACFG = bmINT0 /*| bmFLAGD*/; SYNCDELAY; // only PA0 as INT0 
-  OEA |= bmBIT7 | bmBIT3 | bmBIT1; SYNCDELAY; // PA1 (camera reset) and PA3 (camera PWDN) as outputs, PA7 (led)
-  IOA &= ~bmBIT3; mdelay(1); // put camera out of pwdn
-  IOA |= bmBIT1; mdelay(1); // camera reset high (put camera out of reset)
-  IOA &= ~bmBIT7; SYNCDELAY; // led off initially
+  PORTACFG = bmINT0 | bmSLCS; SYNCDELAY; // only PA0 as INT0 
+  OEA |= bmBIT3 | bmBIT1; SYNCDELAY; // PA1 (camera reset) and PA3 (camera PWDN) as outputs, PA7 (led)
+  IOA1 = 1; mdelay(1); // camera reset high (put camera out of reset)
+  IOA3 = 1; SYNCDELAY;// enable SLCS, ignore camera
   //PINFLAGSCD |= (0xc << 4); // EP2 as EF
   
   /* configure camera registers */
@@ -149,18 +134,30 @@ void firmware_initialize(void)
   sccb_modify(SCCB_COM7, bmQVGA | /*bmCOLORBAR |*/ bmRGB, 0);
   sccb_modify(SCCB_COM15, bmBIT4, 0); // RGB565
   //sccb_modify(SCCB_SCALING_XSC, bmTEST_PATTERN, 0);
-  sccb_modify(SCCB_SCALING_YSC, bmTEST_PATTERN, 0);
+  //sccb_modify(SCCB_SCALING_YSC, bmTEST_PATTERN, 0);
   //sccb_modify(SCCB_COM17, bmDSPCOLORBAR, 0);
+  
+  sccb_modify(SCCB_COM10, bmNEG_VSYNC, 0); // invert VSYNC
   
   /*// 12Mhz PCLK
   sccb_modify(SCCB_COM14, bmDCWSCALE | 0b10, 0); 
   sccb_modify(SCCB_SCALING_PCLK_DIV, bmDSPSCALE | 0b10, 0);*/
   
-  //sccb_modify(SCCB_CLKRC, 1, bmNO_PRESCALE); // set clock prescale. 0 = CLKIN / 2, 1 = CLKIN = 4
+  sccb_modify(SCCB_CLKRC, 2, bmNO_PRESCALE); // set clock prescale. 0 = CLKIN / 2, 1 = CLKIN / 4
   //sccb_modify
+  
+  //sccb_write(SCCB_PSHFT, 1);
+  /*sccb_write(SCCB_VREF, (VSTART & 0b11) | ((VSTOP & 0b11) << 2));
+  sccb_write(SCCB_VSTART, VSTART & 0b1111111100);
+  sccb_write(SCCB_VSTOP, VSTOP & 0b1111111100);
+  sccb_write(SCCB_HREF, (HSTART & 0b111) | ((HSTOP & 0b111) << 3));
+  sccb_write(SCCB_HSTART, HSTART & 0b11111111000);
+  sccb_write(SCCB_HSTOP, HSTOP & 0b11111111000);*/
   mdelay(300); // wait 300ms for register settle
   
   /* configure fifos */
+  FIFORESET = 0x80; SYNCDELAY;					// NAK all transfers until the frame starts
+  
   //IFCONFIG |= bmIFCLKPOL; SYNCDELAY; // invert FIFO clock polarity, TODO: ok?
   IFCONFIG &= ~bmIFCLKSRC; SYNCDELAY; // disable int. FIFO clock (use ext. clock)
   IFCONFIG |= (bmIFCFG0 | bmIFCFG1); SYNCDELAY;// enable SLAVE FIFO operation
@@ -180,15 +177,17 @@ void firmware_initialize(void)
   
   // setup EP2
   EP2FIFOCFG &= ~bmWORDWIDE; SYNCDELAY; // set EP2 8bits (PORTB -> FD[7:0]) 
+  EP2FIFOCFG |= bmAUTOIN; SYNCDELAY; //switching to auto-in mode
   
   //EP2ISOINPKTS |= bmBIT1 | bmBIT0; // set INPPF[1:0] = 3 -> 3 packets per microframe
   // TODO: medir que realmente este teniendo 320x240
   EP2AUTOINLENH = (626 >> 8); SYNCDELAY;
   EP2AUTOINLENL = (626 & 0xFF); SYNCDELAY;
   FIFOINPOLAR |= bmBIT2; SYNCDELAY; // set SLWR active-high
-  
+    
   // disable access to FIFOs
   REVCTL = 0; SYNCDELAY;  
+ 
     
   // TODO: ver como setear las cosas para que se empiece a hacer todo recien al inicio de un frame (falling edge de VSYNC, por ej)
   // TODO: set FIFOADDR pins!
@@ -221,7 +220,8 @@ unsigned char app_vendor_cmd(void)
     break;
     case 0x96:
     {
-      EX0 = 1; // enable INT0 interrupt
+      IE0 = 0; SYNCDELAY;
+      EX0 = 1; SYNCDELAY; // enable INT0 interrupt
     }
     break;
     default:

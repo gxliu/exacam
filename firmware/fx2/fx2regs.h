@@ -312,6 +312,14 @@ EXTERN __xdata _AT_(0xFC00) volatile BYTE EP8FIFOBUF[1024]  ;  // 512 byte EP8 b
 -----------------------------------------------------------------------------*/
 
 __sfr __at 0x80 IOA;
+        __sbit __at 0x80+0 IOA0;
+        __sbit __at 0x80+1 IOA1;
+        __sbit __at 0x80+2 IOA2;
+        __sbit __at 0x80+3 IOA3;
+        __sbit __at 0x80+3 IOA4;
+        __sbit __at 0x80+3 IOA5;
+        __sbit __at 0x80+3 IOA6;
+        __sbit __at 0x80+3 IOA7;                                
 __sfr __at 0x81 SP;
 __sfr __at 0x82 DPL;
 __sfr __at 0x83 DPH;
@@ -530,6 +538,7 @@ __sfr __at 0xF8 EIP; // EIP Bit Values differ from Reg320
 #define bm8051RES    bmBIT0
 /* Port Alternate Configuration Registers */
 /* Port A (PORTACFG) */
+#define bmSLCS       bmBIT6
 #define bmFLAGD      bmBIT7
 #define bmINT1       bmBIT1
 #define bmINT0       bmBIT0

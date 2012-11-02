@@ -17,6 +17,15 @@ void sccb_modify(char addr, char set, char unset);
 #define SCCB_SCALING_XSC 0x70
 #define SCCB_SCALING_YSC 0x71
 #define SCCB_SCALING_PCLK_DIV 0x73
+#define SCCB_COM10 0x15
+#define SCCB_COM2 0x09
+#define SCCB_PSHFT 0x1B
+#define SCCB_HSTART 0x17
+#define SCCB_HSTOP 0x18
+#define SCCB_VSTART 0x19
+#define SCCB_VSTOP 0x1A
+#define SCCB_HREF 0x32
+#define SCCB_VREF 0x03
 
 /* bits */
 
@@ -45,5 +54,12 @@ void sccb_modify(char addr, char set, char unset);
 
 // COM17
 #define bmDSPCOLORBAR bmBIT3
+
+// COM10
+#define bmPCLK_GATED bmBIT5
+#define bmNEG_VSYNC bmBIT1
+
+// COM2
+#define bmPWDN bmBIT4
 
 #endif
